@@ -96,3 +96,76 @@ func (dbs *DBService) GetUserByUsername(username string) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+func (dbs *DBService) GetAllUsers() ([]*models.User, error) {
+	query := `
+    SELECT
+        id,
+        name,
+        username,
+        email,
+        Address,
+        joined_at
+    FROM users;
+    `
+	rows, err := dbs.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]*models.User, 0)
+	for rows.Next() {
+		user := models.User{}
+		if err := rows.Scan(
+			&user.Id,
+			&user.Name,
+			&user.Username,
+			&user.Email,
+			&user.Address,
+			&user.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (dbs *DBService) UpdateUser(newUser *models.User) error {
+	query := `
+    UPDATE users
+    SET 
+        name = $1,
+        username = $2,
+        email = $3,
+        password = $4,
+        address = $5
+    WHERE id = $6;
+    `
+	if _, err := dbs.db.Exec(
+		query,
+		newUser.Name,
+		newUser.Username,
+		newUser.Email,
+		newUser.Password,
+		newUser.Address,
+		newUser.Id,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dbs *DBService) DeleteUser(id int) error {
+	query := `DELETE FROM users WHERE id = $1;`
+	if _, err := dbs.db.Exec(query, id); err != nil {
+		return err
+	}
+	return nil
+}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/assaidy/bookstore/internals/database"
@@ -84,5 +85,115 @@ func (h *UserHandler) HandleLoginUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
 		Message: "logged in successfully",
 		Data:    fiber.Map{"token": tokenStr},
+	})
+}
+
+func (h *UserHandler) HandleGetAllUsers(c *fiber.Ctx) error {
+	users, err := h.db.GetAllUsers()
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
+		Message: "users retrieved successfully",
+		Data:    fiber.Map{"users": users},
+	})
+}
+
+func (h *UserHandler) HandleGetUserById(c *fiber.Ctx) error {
+	// id, ok := utils.GetUserIdFromContext(c)
+	// if !ok {
+	// 	return utils.UnauthorizedError()
+	// }
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	user, err := h.db.GetUserById(id)
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+	if user == nil {
+		return utils.NotFoundError(fmt.Sprintf("user with id %d not found", id))
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
+		Message: "user found",
+		Data:    fiber.Map{"user": user},
+	})
+}
+
+func (h *UserHandler) HandleUpdateUserById(c *fiber.Ctx) error {
+	req := models.UserRegisterOrUpdateRequest{}
+	if err := parseAndValidateReq(c, &req); err != nil {
+		return utils.InvalidJsonRequestError()
+	}
+
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	user, err := h.db.GetUserById(id)
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+	if user == nil {
+		return utils.NotFoundError(fmt.Sprintf("user with id %d not found", id))
+	}
+
+	if req.Username != user.Username {
+		if ok, err := h.db.CheckUsernameConflict(req.Username); err != nil {
+			return utils.InternalServerError(err)
+		} else if ok {
+			return utils.ConflictError("username already exists")
+		}
+	}
+	if req.Email != user.Email {
+		if ok, err := h.db.CheckEmailConflict(req.Email); err != nil {
+			return utils.InternalServerError(err)
+		} else if ok {
+			return utils.ConflictError("email already exists")
+		}
+	}
+
+	hashedPassword, err := utils.HashPassword([]byte(req.Password))
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+	user.Password = hashedPassword
+	user.Username = req.Username
+	user.Name = req.Name
+	user.Email = req.Email
+	user.Address = req.Address
+
+	if err := h.db.UpdateUser(user); err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.ApiError{
+		Message: "updated successfully",
+	})
+}
+
+func (h *UserHandler) HandleDeleteUserById(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	if ok, err := h.db.CheckIfUserExists(id); err != nil {
+		return utils.InternalServerError(err)
+	} else if !ok {
+		return utils.UnauthorizedError()
+	}
+
+	if err := h.db.DeleteUser(id); err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
+		Message: "deleted successfully",
 	})
 }
