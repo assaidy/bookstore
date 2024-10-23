@@ -12,15 +12,15 @@ type User struct {
 	JoinedAt time.Time `json:"joinedAt"`
 }
 
-type UserRegisterOrUpdateRequest struct {
-	Name     string `json:"name" validate:"required,min=3,max=32"`
+type UserRegisterOrUpdateReq struct {
+	Name     string `json:"name" validate:"required,min=3,max=32,notBlank"`
 	Email    string `json:"email" validate:"required,email"`
 	Username string `json:"username" validate:"required,min=3,max=32,startsWithLetter"`
-	Password string `json:"password" validate:"required,min=8,max=32"`
-	Address   string `json:"address" validate:"required"`
+	Password string `json:"password" validate:"required,min=8,max=32,notBlank"`
+	Address  string `json:"address" validate:"required,notBlank"`
 }
 
-type UserLoginRequest struct {
+type UserLoginReq struct {
 	Username string `json:"username" validate:"required,min=3,max=32,startsWithLetter"`
-	Password string `json:"password" validate:"required,min=8,max=32"`
+	Password string `json:"password" validate:"required,min=8,max=32,notBlank"`
 }

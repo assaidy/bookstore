@@ -31,7 +31,7 @@ func parseAndValidateReq(c *fiber.Ctx, out any) error {
 }
 
 func (h *UserHandler) HandleRegisterUser(c *fiber.Ctx) error {
-	req := models.UserRegisterOrUpdateRequest{}
+	req := models.UserRegisterOrUpdateReq{}
 	if err := parseAndValidateReq(c, &req); err != nil {
 		return err
 	}
@@ -59,12 +59,13 @@ func (h *UserHandler) HandleRegisterUser(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(utils.ApiResponse{
-		Message: "user created successfully",
+		Message: "created successfully",
+		Data:    fiber.Map{"user": user},
 	})
 }
 
 func (h *UserHandler) HandleLoginUser(c *fiber.Ctx) error {
-	req := models.UserLoginRequest{}
+	req := models.UserLoginReq{}
 	if err := parseAndValidateReq(c, &req); err != nil {
 		return err
 	}
@@ -84,7 +85,7 @@ func (h *UserHandler) HandleLoginUser(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
 		Message: "logged in successfully",
-		Data:    fiber.Map{"token": tokenStr},
+		Data:    fiber.Map{"token": tokenStr, "user": user},
 	})
 }
 
@@ -95,7 +96,7 @@ func (h *UserHandler) HandleGetAllUsers(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
-		Message: "users retrieved successfully",
+		Message: "retrieved successfully",
 		Data:    fiber.Map{"users": users},
 	})
 }
@@ -125,9 +126,9 @@ func (h *UserHandler) HandleGetUserById(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) HandleUpdateUserById(c *fiber.Ctx) error {
-	req := models.UserRegisterOrUpdateRequest{}
+	req := models.UserRegisterOrUpdateReq{}
 	if err := parseAndValidateReq(c, &req); err != nil {
-		return utils.InvalidJsonRequestError()
+		return err
 	}
 
 	id, err := c.ParamsInt("id")
@@ -172,8 +173,9 @@ func (h *UserHandler) HandleUpdateUserById(c *fiber.Ctx) error {
 		return utils.InternalServerError(err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(utils.ApiError{
+	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
 		Message: "updated successfully",
+		Data:    fiber.Map{"user": user},
 	})
 }
 
