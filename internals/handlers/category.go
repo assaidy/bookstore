@@ -63,10 +63,7 @@ func (h *CategoryHandler) HandleUpdateCategoryById(c *fiber.Ctx) error {
 	}
 	req.Name = strings.TrimSpace(strings.ToLower(req.Name))
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
-		return utils.InternalServerError(err)
-	}
+	id, _ := c.ParamsInt("id")
 
 	cat, err := h.db.GetCategoryById(id)
 	if err != nil {
@@ -95,10 +92,7 @@ func (h *CategoryHandler) HandleUpdateCategoryById(c *fiber.Ctx) error {
 }
 
 func (h *CategoryHandler) HandleDeleteCategoryById(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id")
-	if err != nil {
-		return utils.InternalServerError(err)
-	}
+	id, _ := c.ParamsInt("id")
 
 	if ok, err := h.db.CheckIfCategoryExists(id); err != nil {
 		return utils.InternalServerError(err)

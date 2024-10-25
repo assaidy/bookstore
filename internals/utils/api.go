@@ -28,6 +28,13 @@ func InvalidJsonRequestError() ApiError {
 	}
 }
 
+func InvalidDataError(msg string) ApiError {
+	return ApiError{
+		Code:    fiber.StatusBadRequest,
+		Message: msg,
+	}
+}
+
 func ValidationError(errs any) ApiError {
 	return ApiError{
 		Code:    fiber.StatusBadRequest,

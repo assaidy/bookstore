@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+
 	"github.com/assaidy/bookstore/internals/models"
 )
 
@@ -123,6 +124,7 @@ func (dbs *DBService) GetAllUsers() ([]*models.User, error) {
 	defer rows.Close()
 
 	users := make([]*models.User, 0)
+
 	for rows.Next() {
 		user := models.User{}
 		if err := rows.Scan(
@@ -212,6 +214,7 @@ func (dbs *DBService) GetAllCategories() ([]*models.Category, error) {
 	defer rows.Close()
 
 	cats := make([]*models.Category, 0)
+
 	for rows.Next() {
 		cat := models.Category{}
 		if err := rows.Scan(&cat.Id, &cat.Name); err != nil {
@@ -253,3 +256,220 @@ func (dbs *DBService) DeleteCategory(id int) error {
 	}
 	return nil
 }
+
+// --------------------------------------------------
+// > cover
+// --------------------------------------------------
+func (dbs *DBService) CreateCover(inout *models.Cover) error {
+	query := `
+    INSERT INTO covers (encoding, content)
+    VALUES ($1, $2)
+    RETURNING id;
+    `
+	if err := dbs.db.QueryRow(
+		query,
+		inout.Encoding,
+		inout.Content,
+	).Scan(&inout.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) GetCoverById(id int) (*models.Cover, error) {
+	query := `SELECT encoding, content FROM covers WHERE id = $1;`
+	cov := models.Cover{Id: id}
+	if err := dbs.db.QueryRow(query, id).Scan(&cov.Encoding, &cov.Content); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &cov, nil
+}
+
+func (dbs *DBService) UpdateCover(cov *models.Cover) error {
+	query := `UPDATE covers SET encoding = $1, content = $2 WHERE id = $3;`
+	if _, err := dbs.db.Exec(query, cov.Encoding, cov.Content, cov.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) CheckIfCoverExists(id int) (bool, error) {
+	query := `SELECT 1 FROM covers WHERE id = $1 LIMIT 1;`
+	return dbs.checkRow(query, id)
+}
+
+func (dbs *DBService) DeleteCover(id int) error {
+	query := `DELETE FROM covers WHERE id = $1;`
+	if _, err := dbs.db.Exec(query, id); err != nil {
+		return err
+	}
+	return nil
+}
+
+// --------------------------------------------------
+// > book
+// --------------------------------------------------
+func (dbs *DBService) CreateBook(inout *models.Book) error {
+	query := `
+    INSERT INTO books(
+        title,
+        description,
+        category_id,
+        cover_id,
+        price,
+        quantity,
+        discount,
+        added_at
+    )
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id;
+    `
+	if err := dbs.db.QueryRow(
+		query,
+		inout.Title,
+		inout.Description,
+		inout.CategoryId,
+		inout.CoverId,
+		inout.Price,
+		inout.Quantity,
+		inout.Discount,
+		inout.AddedAt,
+	).Scan(&inout.Id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) GetBookById(id int) (*models.Book, error) {
+	query := `
+    SELECT
+        title,
+        description,
+        category_id,
+        cover_id,
+        price,
+        quantity,
+        discount,
+        added_at,
+        purchase_count
+    FROM books
+    WHERE id = $1;
+    `
+	book := models.Book{Id: id}
+	if err := dbs.db.QueryRow(query, id).Scan(
+		&book.Title,
+		&book.Description,
+		&book.CategoryId,
+		&book.CoverId,
+		&book.Price,
+		&book.Quantity,
+		&book.Discount,
+		&book.AddedAt,
+		&book.PurchaseCount,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &book, nil
+}
+
+func (dbs *DBService) UpdateBook(book *models.Book) error {
+	query := `
+    UPDATE books
+    SET 
+        title = $1,
+        description = $2,
+        category_id = $3,
+        price = $4,
+        quantity = $5,
+        discount = $6,
+    WHERE id = $7;
+    `
+	if _, err := dbs.db.Exec(
+		query,
+		book.Title,
+		book.Description,
+		book.CategoryId,
+		book.Price,
+		book.Quantity,
+		book.Discount,
+		book.Id,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) CheckIfBookExists(id int) (bool, error) {
+	query := `SELECT 1 FROM books WHERE id = $1 LIMIT 1;`
+	return dbs.checkRow(query, id)
+}
+
+func (dbs *DBService) DeleteBook(id int) error {
+	query := `DELETE FROM books WHERE id = $1;`
+	if _, err := dbs.db.Exec(query, id); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) GetAllBooks() ([]*models.Book, error) {
+	query := `
+    SELECT
+        id,
+        title,
+        description,
+        category_id,
+        cover_id,
+        price,
+        quantity,
+        discount,
+        added_at,
+        purchase_count
+    FROM books;
+    `
+	rows, err := dbs.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	books := make([]*models.Book, 0)
+
+	for rows.Next() {
+		book := models.Book{}
+		if err := rows.Scan(
+			&book.Id,
+			&book.Title,
+			&book.Description,
+			&book.CategoryId,
+			&book.CoverId,
+			&book.Price,
+			&book.Quantity,
+			&book.Discount,
+			&book.AddedAt,
+			&book.PurchaseCount,
+		); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
+// --------------------------------------------------
+// > favourites
+// --------------------------------------------------
+
+// --------------------------------------------------
+// > cart
+// --------------------------------------------------

@@ -20,6 +20,8 @@ func NewUserHandler(db *database.DBService) *UserHandler {
 	}
 }
 
+// TODO: trim spaces
+
 func parseAndValidateReq(c *fiber.Ctx, out any) error {
 	if err := c.BodyParser(&out); err != nil {
 		return utils.InvalidJsonRequestError()
@@ -106,10 +108,7 @@ func (h *UserHandler) HandleGetUserById(c *fiber.Ctx) error {
 	// if !ok {
 	// 	return utils.UnauthorizedError()
 	// }
-	id, err := c.ParamsInt("id")
-	if err != nil {
-		return utils.InternalServerError(err)
-	}
+	id, _ := c.ParamsInt("id")
 
 	user, err := h.db.GetUserById(id)
 	if err != nil {
@@ -131,10 +130,7 @@ func (h *UserHandler) HandleUpdateUserById(c *fiber.Ctx) error {
 		return err
 	}
 
-	id, err := c.ParamsInt("id")
-	if err != nil {
-		return utils.InternalServerError(err)
-	}
+	id, _ := c.ParamsInt("id")
 
 	user, err := h.db.GetUserById(id)
 	if err != nil {
@@ -180,10 +176,7 @@ func (h *UserHandler) HandleUpdateUserById(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) HandleDeleteUserById(c *fiber.Ctx) error {
-	id, err := c.ParamsInt("id")
-	if err != nil {
-		return utils.InternalServerError(err)
-	}
+	id, _ := c.ParamsInt("id")
 
 	if ok, err := h.db.CheckIfUserExists(id); err != nil {
 		return utils.InternalServerError(err)
