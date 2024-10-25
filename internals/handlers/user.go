@@ -15,9 +15,7 @@ type UserHandler struct {
 }
 
 func NewUserHandler(db *database.DBService) *UserHandler {
-	return &UserHandler{
-		db: db,
-	}
+	return &UserHandler{db: db}
 }
 
 // TODO: trim spaces

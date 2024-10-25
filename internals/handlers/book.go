@@ -15,9 +15,7 @@ type BookHandler struct {
 }
 
 func NewBookHandler(db *database.DBService) *BookHandler {
-	return &BookHandler{
-		db: db,
-	}
+	return &BookHandler{db: db}
 }
 
 func (h *BookHandler) HandleCreateBook(c *fiber.Ctx) error {

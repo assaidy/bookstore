@@ -14,9 +14,7 @@ type CoverHandler struct {
 }
 
 func NewCoverHandler(db *database.DBService) *CoverHandler {
-	return &CoverHandler{
-		db: db,
-	}
+	return &CoverHandler{db: db}
 }
 
 // FIX: should not be used, creaet cover in create book handler

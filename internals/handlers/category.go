@@ -15,9 +15,7 @@ type CategoryHandler struct {
 }
 
 func NewCategoryHandler(db *database.DBService) *CategoryHandler {
-	return &CategoryHandler{
-		db: db,
-	}
+	return &CategoryHandler{db: db}
 }
 
 func (h *CategoryHandler) HandleCreateCategory(c *fiber.Ctx) error {

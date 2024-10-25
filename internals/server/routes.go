@@ -11,6 +11,7 @@ func (s *FiberServer) RegisterRoutes() {
 		categoryH = handlers.NewCategoryHandler(s.db)
 		coverH    = handlers.NewCoverHandler(s.db)
 		bookH     = handlers.NewBookHandler(s.db)
+		favH      = handlers.NewFavouritesHandler(s.db)
 	)
 
 	s.Post("/user/register", userH.HandleRegisterUser)
@@ -35,6 +36,10 @@ func (s *FiberServer) RegisterRoutes() {
 	s.Get("/book/:id<int>", bookH.HnadleGetBookById)
 	s.Put("/book/:id<int>", bookH.HnadleUpdateBookById)
 	s.Delete("/book/:id<int>", bookH.HnadleDeleteBookById)
+
+	s.Post("/user/:uid<int>/favourite/:bid<int>", favH.HandleAddBookToFavourites)
+	s.Get("/user/:uid<int>/favourite", favH.HandleGetAllUserFavourites)
+	s.Delete("/user/:uid<int>/favourite/:bid<int>", favH.HandleDeleteBookFromFavourites)
 
 	// NOTE: this validates before our logging handler ie. it will not log errors
 	// it sends 401: Invalid or expired JWT

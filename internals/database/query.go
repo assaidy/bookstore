@@ -469,6 +469,57 @@ func (dbs *DBService) GetAllBooks() ([]*models.Book, error) {
 // --------------------------------------------------
 // > favourites
 // --------------------------------------------------
+func (dbs *DBService) AddBookToFavourites(uid, bid int) error {
+	query := `INSERT INTO favourites (user_id, book_id) VALUES ($1, $2);`
+	if _, err := dbs.db.Exec(query, uid, bid); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) GetAllBooksInFavourites(uid int) ([]*models.Book, error) {
+	query := `SELECT book_id FROM favourites WHERE user_id = $1;`
+
+	rows, err := dbs.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	books := make([]*models.Book, 0)
+
+	for rows.Next() {
+		book := models.Book{}
+		if err := rows.Scan(
+			&book.Id,
+			&book.Title,
+			&book.Description,
+			&book.CategoryId,
+			&book.CoverId,
+			&book.Price,
+			&book.Quantity,
+			&book.Discount,
+			&book.AddedAt,
+			&book.PurchaseCount,
+		); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
+func (dbs *DBService) DeleteBookFromFavourites(uid, bid int) error {
+    query := `DELETE FROM favourites WHERE user_id = $1 AND book_id = $2;`
+    if _, err := dbs.db.Exec(query, uid, bid); err != nil {
+        return err
+    }
+    return nil
+}
 
 // --------------------------------------------------
 // > cart
