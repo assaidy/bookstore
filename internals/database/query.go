@@ -480,7 +480,7 @@ func (dbs *DBService) AddBookToFavourites(uid, bid int) error {
 func (dbs *DBService) GetAllBooksInFavourites(uid int) ([]*models.Book, error) {
 	query := `SELECT book_id FROM favourites WHERE user_id = $1;`
 
-	rows, err := dbs.db.Query(query)
+	rows, err := dbs.db.Query(query, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -514,13 +514,79 @@ func (dbs *DBService) GetAllBooksInFavourites(uid int) ([]*models.Book, error) {
 }
 
 func (dbs *DBService) DeleteBookFromFavourites(uid, bid int) error {
-    query := `DELETE FROM favourites WHERE user_id = $1 AND book_id = $2;`
-    if _, err := dbs.db.Exec(query, uid, bid); err != nil {
-        return err
-    }
-    return nil
+	query := `DELETE FROM favourites WHERE user_id = $1 AND book_id = $2;`
+	if _, err := dbs.db.Exec(query, uid, bid); err != nil {
+		return err
+	}
+	return nil
 }
 
 // --------------------------------------------------
 // > cart
 // --------------------------------------------------
+func (dbs *DBService) AddBookToCart(uid, bid, quantity int) error {
+	query := `
+    INSERT INTO cart (user_id, book_id, quantity)
+    VALUES ($1, $2, $3);
+    `
+	if _, err := dbs.db.Exec(query, uid, bid, quantity); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dbs *DBService) GetBookFromCart(uid, bid int) (*models.CartBook, error) {
+	query := `SELECT quantity FROM cart WHERE uid = $1 AND bid = $2;`
+	cb := models.CartBook{UserId: uid, BookId: bid}
+	if err := dbs.db.QueryRow(query, uid, bid).Scan(&cb.Quantity); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &cb, nil
+}
+
+func (dbs *DBService) GetBooksInCart(uid int) ([]*models.Book, error) {
+	query := `SELECT book_id FROM favourites WHERE user_id = $1;`
+
+	rows, err := dbs.db.Query(query, uid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	books := make([]*models.Book, 0)
+
+	for rows.Next() {
+		book := models.Book{}
+		if err := rows.Scan(
+			&book.Id,
+			&book.Title,
+			&book.Description,
+			&book.CategoryId,
+			&book.CoverId,
+			&book.Price,
+			&book.Quantity,
+			&book.Discount,
+			&book.AddedAt,
+			&book.PurchaseCount,
+		); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
+func (dbs *DBService) DeleteBookFromCart(uid, bid int) error {
+	query := `DELETE FROM cart WHERE user_id = $1 AND book_id = $2;`
+	if _, err := dbs.db.Exec(query, uid, bid); err != nil {
+		return err
+	}
+	return nil
+}
