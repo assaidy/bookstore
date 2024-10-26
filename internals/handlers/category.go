@@ -54,6 +54,20 @@ func (h *CategoryHandler) HandleGetAllCategories(c *fiber.Ctx) error {
 	})
 }
 
+func (h *CategoryHandler) HandleGetAllBooksByCategory(c *fiber.Ctx) error {
+	id, _ := c.ParamsInt("id") // category id
+
+	books, err := h.db.GetAllBooksByCategory(id)
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
+		Message: "retrieved successfully",
+		Data:    fiber.Map{"books": books},
+	})
+}
+
 func (h *CategoryHandler) HandleUpdateCategoryById(c *fiber.Ctx) error {
 	req := models.CategoryCreateOrUpdateReq{}
 	if err := parseAndValidateReq(c, &req); err != nil {

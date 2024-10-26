@@ -378,6 +378,53 @@ func (dbs *DBService) GetBookById(id int) (*models.Book, error) {
 	return &book, nil
 }
 
+func (dbs *DBService) GetAllBooksByCategory(cid int) ([]*models.Book, error) {
+	query := `
+    SELECT
+        id,
+        title,
+        description,
+        cover_id,
+        price,
+        quantity,
+        discount,
+        added_at,
+        purchase_count
+    FROM books
+    WHERE category_id = $1; 
+    `
+	rows, err := dbs.db.Query(query, cid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	books := make([]*models.Book, 0)
+
+	for rows.Next() {
+		book := models.Book{CategoryId: cid}
+		if err := rows.Scan(
+			&book.Id,
+			&book.Title,
+			&book.Description,
+			&book.CoverId,
+			&book.Price,
+			&book.Quantity,
+			&book.Discount,
+			&book.AddedAt,
+			&book.PurchaseCount,
+		); err != nil {
+			return nil, err
+		}
+		books = append(books, &book)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return books, nil
+}
+
 func (dbs *DBService) UpdateBook(book *models.Book) error {
 	query := `
     UPDATE books
