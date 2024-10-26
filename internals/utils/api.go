@@ -30,14 +30,14 @@ func InvalidJsonRequestError() ApiError {
 
 func InvalidDataError(msg string) ApiError {
 	return ApiError{
-		Code:    fiber.StatusBadRequest,
+		Code:    fiber.StatusUnprocessableEntity,
 		Message: msg,
 	}
 }
 
 func ValidationError(errs any) ApiError {
 	return ApiError{
-		Code:    fiber.StatusBadRequest,
+		Code:    fiber.StatusUnprocessableEntity,
 		Message: "invalid request data",
 		Errors:  errs,
 	}

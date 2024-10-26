@@ -98,10 +98,10 @@ func (h *CartHandler) HandleDeleteBookFromCart(c *fiber.Ctx) error {
 	})
 }
 
-func getTotalPrice(books []*models.Book) float64 {
+func getTotalPrice(books []*models.CartBook) float64 {
 	total := 0.0
 	for _, book := range books {
-		total += book.Price
+		total += book.PricePerUnite
 	}
 	return total
 }

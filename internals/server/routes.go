@@ -1,9 +1,10 @@
 package server
 
 import (
+	"os"
+
 	"github.com/assaidy/bookstore/internals/handlers"
 	jwtware "github.com/gofiber/contrib/jwt"
-	"os"
 )
 
 func (s *FiberServer) RegisterRoutes() {
@@ -14,6 +15,7 @@ func (s *FiberServer) RegisterRoutes() {
 		bookH     = handlers.NewBookHandler(s.db)
 		favH      = handlers.NewFavouritesHandler(s.db)
 		cartH     = handlers.NewCartHandler(s.db)
+		orderH    = handlers.NewOrderHandler(s.db)
 	)
 
 	s.Post("/user/register", userH.HandleRegisterUser)
@@ -57,4 +59,9 @@ func (s *FiberServer) RegisterRoutes() {
 	s.Post("/user/:uid<int>/cart", cartH.HandleAddToCart)
 	s.Get("/user/:uid<int>/cart", cartH.HandleGetBooksInCart)
 	s.Delete("/user/:uid<int>/cart/:bid<int>", cartH.HandleDeleteBookFromCart)
+
+	s.Post("/user/:uid<int>/order", orderH.HandleApplyOrder)
+	s.Get("/user/:uid<int>/order", orderH.HandleGetAllOrderByUser)
+	s.Get("/order", orderH.HandleGetAllOrders)
+	s.Get("/order/:id<int>", orderH.HandleGetOrderById)
 }

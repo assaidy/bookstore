@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/assaidy/bookstore/internals/models"
 )
@@ -573,8 +574,16 @@ func (dbs *DBService) DeleteBookFromFavourites(uid, bid int) error {
 // --------------------------------------------------
 func (dbs *DBService) AddBookToCart(uid, bid, quantity int) error {
 	query := `
-    INSERT INTO cart (user_id, book_id, quantity)
-    VALUES ($1, $2, $3);
+    INSERT INTO cart (user_id, book_id, quantity, price_per_unite)
+    VALUES (
+        $1,
+        $2,
+        $3,
+        (SELECT 
+            price - (discount * price)
+        FROM books
+        WHERE id = $2)
+    );
     `
 	if _, err := dbs.db.Exec(query, uid, bid, quantity); err != nil {
 		return err
@@ -583,9 +592,9 @@ func (dbs *DBService) AddBookToCart(uid, bid, quantity int) error {
 }
 
 func (dbs *DBService) GetBookFromCart(uid, bid int) (*models.CartBook, error) {
-	query := `SELECT quantity FROM cart WHERE uid = $1 AND bid = $2;`
+	query := `SELECT quantity, price_per_unite FROM cart WHERE uid = $1 AND bid = $2;`
 	cb := models.CartBook{UserId: uid, BookId: bid}
-	if err := dbs.db.QueryRow(query, uid, bid).Scan(&cb.Quantity); err != nil {
+	if err := dbs.db.QueryRow(query, uid, bid).Scan(&cb.Quantity, &cb.PricePerUnite); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -594,8 +603,8 @@ func (dbs *DBService) GetBookFromCart(uid, bid int) (*models.CartBook, error) {
 	return &cb, nil
 }
 
-func (dbs *DBService) GetBooksInCart(uid int) ([]*models.Book, error) {
-	query := `SELECT book_id FROM favourites WHERE user_id = $1;`
+func (dbs *DBService) GetBooksInCart(uid int) ([]*models.CartBook, error) {
+	query := `SELECT book_id, quantity, price_per_unite FROM cart WHERE user_id = $1;`
 
 	rows, err := dbs.db.Query(query, uid)
 	if err != nil {
@@ -603,21 +612,14 @@ func (dbs *DBService) GetBooksInCart(uid int) ([]*models.Book, error) {
 	}
 	defer rows.Close()
 
-	books := make([]*models.Book, 0)
+	books := make([]*models.CartBook, 0)
 
 	for rows.Next() {
-		book := models.Book{}
+		book := models.CartBook{UserId: uid}
 		if err := rows.Scan(
-			&book.Id,
-			&book.Title,
-			&book.Description,
-			&book.CategoryId,
-			&book.CoverId,
-			&book.Price,
+			&book.BookId,
 			&book.Quantity,
-			&book.Discount,
-			&book.AddedAt,
-			&book.PurchaseCount,
+			&book.PricePerUnite,
 		); err != nil {
 			return nil, err
 		}
@@ -636,4 +638,227 @@ func (dbs *DBService) DeleteBookFromCart(uid, bid int) error {
 		return err
 	}
 	return nil
+}
+
+// --------------------------------------------------
+// > order
+// --------------------------------------------------
+func (dbs *DBService) MakeOrder(uid int) error {
+	tx, err := dbs.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// get cart items
+	books, err := dbs.GetBooksInCart(uid)
+	if err != nil {
+		return err
+	}
+	if len(books) == 0 {
+		return nil
+	}
+
+	// count total price
+	totalPrice := 0.0
+	for _, book := range books {
+		totalPrice += float64(book.Quantity) * book.PricePerUnite
+	}
+
+	// insert new order
+	query := `
+    INSERT INTO orders (user_id, applied_at, total_price)
+    VALUES ($1, $2, $3)
+    RETURNING id;
+    `
+	var orderId int
+	if err := tx.QueryRow(
+		query,
+		uid,
+		time.Now().UTC(),
+		totalPrice,
+	).Scan(&orderId); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// insert books into order_book table
+	query = `
+    INSERT into order_book (order_id, book_id, quantity, price_per_unite)
+    SELECT
+        $1 AS order_id,
+        book_id,
+        quantity,
+        price_per_unite
+    FROM cart
+    WHERE user_id = $2;
+    `
+	if _, err := tx.Exec(query, orderId, uid); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// clear cart
+	query = `DELETE FROM cart WHERE user_id = $1;`
+	if _, err := tx.Exec(query, uid); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
+
+func (dbs *DBService) GetAllOrdersByUser(uid int) ([]*models.Order, error) {
+	query := `
+    SELECT
+        id,
+        applied_at,
+        total_price,
+    FROM orders
+    WHERE user_id = $1;
+    `
+	rows, err := dbs.db.Query(query, uid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := make([]*models.Order, 0)
+
+	for rows.Next() {
+		order := models.Order{UserId: uid}
+		if err := rows.Scan(
+			&order.Id,
+			&order.AppliedAt,
+			&order.TotalPrice,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, &order)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, order := range orders {
+		orderBooks, err := dbs.getOrderBooks(order.Id)
+		if err != nil {
+			return nil, err
+		}
+		order.OrderBooks = orderBooks
+	}
+
+	return orders, nil
+}
+
+func (dbs *DBService) getOrderBooks(id int) ([]*models.OrderBook, error) {
+	query := `
+    SELECT
+        book_id,
+        quantity,
+        price_per_unite
+    FROM order_book
+    WHERE order_id = $1;
+    `
+	rows, err := dbs.db.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orderBooks := make([]*models.OrderBook, 0)
+
+	for rows.Next() {
+		book := models.OrderBook{}
+		if err := rows.Scan(
+			&book.BookId,
+			&book.Quantity,
+			&book.PricePerUnite,
+		); err != nil {
+			return nil, err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return orderBooks, nil
+}
+
+func (dbs *DBService) GetAllOrders() ([]*models.Order, error) {
+	query := `
+    SELECT
+        id,
+        user_id,
+        applied_at,
+        total_price,
+    FROM orders;
+    `
+	rows, err := dbs.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := make([]*models.Order, 0)
+
+	for rows.Next() {
+		order := models.Order{}
+		if err := rows.Scan(
+			&order.Id,
+			&order.UserId,
+			&order.AppliedAt,
+			&order.TotalPrice,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, &order)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, order := range orders {
+		orderBooks, err := dbs.getOrderBooks(order.Id)
+		if err != nil {
+			return nil, err
+		}
+		order.OrderBooks = orderBooks
+	}
+
+	return orders, nil
+}
+
+func (dbs *DBService) GetOrderById(id int) (*models.Order, error) {
+	query := `
+    SELECT
+        user_id,
+        applied_at,
+        total_price
+    FROM orders
+    WHERE id = $1;
+    `
+	order := models.Order{Id: id}
+	if err := dbs.db.QueryRow(query, id).Scan(
+		&order.UserId,
+		&order.AppliedAt,
+		&order.TotalPrice,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	orderBooks, err := dbs.getOrderBooks(order.Id)
+	if err != nil {
+		return nil, err
+	}
+	order.OrderBooks = orderBooks
+
+	return &order, nil
 }
