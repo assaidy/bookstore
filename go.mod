@@ -4,11 +4,14 @@ go 1.23.2
 
 require (
 	github.com/go-playground/validator/v10 v10.22.1
+	github.com/gofiber/contrib/jwt v1.0.10
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	golang.org/x/crypto v0.19.0
 )
+
+require github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect

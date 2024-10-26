@@ -18,30 +18,30 @@ func NewCoverHandler(db *database.DBService) *CoverHandler {
 }
 
 // FIX: should not be used, creaet cover in create book handler
-func (h *CoverHandler) HandleCreateCover(c *fiber.Ctx) error {
-	req := models.CoverCreateOrUpdateReq{}
-	if err := parseAndValidateReq(c, &req); err != nil {
-		return err
-	}
-
-	if ok := utils.CheckEncodingMatchesContent(req.Encoding, req.Content); !ok {
-		return utils.InvalidDataError(fmt.Sprintf("content does not match %s encoding", req.Encoding))
-	}
-
-	cov := models.Cover{
-		Encoding: req.Encoding,
-		Content:  req.Content,
-	}
-
-	if err := h.db.CreateCover(&cov); err != nil {
-		return utils.InternalServerError(err)
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(utils.ApiResponse{
-		Message: "created successfully",
-		Data:    fiber.Map{"coverId": cov.Id},
-	})
-}
+// func (h *CoverHandler) HandleCreateCover(c *fiber.Ctx) error {
+// 	req := models.CoverCreateOrUpdateReq{}
+// 	if err := parseAndValidateReq(c, &req); err != nil {
+// 		return err
+// 	}
+//
+// 	if ok := utils.CheckEncodingMatchesContent(req.Encoding, req.Content); !ok {
+// 		return utils.InvalidDataError(fmt.Sprintf("content does not match %s encoding", req.Encoding))
+// 	}
+//
+// 	cov := models.Cover{
+// 		Encoding: req.Encoding,
+// 		Content:  req.Content,
+// 	}
+//
+// 	if err := h.db.CreateCover(&cov); err != nil {
+// 		return utils.InternalServerError(err)
+// 	}
+//
+// 	return c.Status(fiber.StatusCreated).JSON(utils.ApiResponse{
+// 		Message: "created successfully",
+// 		Data:    fiber.Map{"coverId": cov.Id},
+// 	})
+// }
 
 func (h *CoverHandler) HandleGetCoverById(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id")
@@ -101,20 +101,20 @@ func (h *CoverHandler) HandleUpdateCoverById(c *fiber.Ctx) error {
 }
 
 // FIX: should not be used, creaet cover in delete book handler
-func (h *CoverHandler) HandleDeleteCoverById(c *fiber.Ctx) error {
-	id, _ := c.ParamsInt("id")
-
-	if ok, err := h.db.CheckIfCoverExists(id); err != nil {
-		return utils.InternalServerError(err)
-	} else if !ok {
-		return utils.NotFoundError(fmt.Sprintf("cover with id %d not found", id))
-	}
-
-	if err := h.db.DeleteCover(id); err != nil {
-		return utils.InternalServerError(err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
-		Message: "deleted successfully",
-	})
-}
+// func (h *CoverHandler) HandleDeleteCoverById(c *fiber.Ctx) error {
+// 	id, _ := c.ParamsInt("id")
+//
+// 	if ok, err := h.db.CheckIfCoverExists(id); err != nil {
+// 		return utils.InternalServerError(err)
+// 	} else if !ok {
+// 		return utils.NotFoundError(fmt.Sprintf("cover with id %d not found", id))
+// 	}
+//
+// 	if err := h.db.DeleteCover(id); err != nil {
+// 		return utils.InternalServerError(err)
+// 	}
+//
+// 	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
+// 		Message: "deleted successfully",
+// 	})
+// }
