@@ -58,9 +58,14 @@ func (h *UserHandler) HandleRegisterUser(c *fiber.Ctx) error {
 		return utils.InternalServerError(err)
 	}
 
+	tokenStr, err := utils.GenerateJwtToken(user.Id, user.Username)
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(utils.ApiResponse{
 		Message: "created successfully",
-		Data:    fiber.Map{"user": user},
+		Data:    fiber.Map{"token": tokenStr, "user": user},
 	})
 }
 
