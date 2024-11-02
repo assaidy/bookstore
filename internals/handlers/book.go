@@ -44,6 +44,7 @@ func (h *BookHandler) HandleCreateBook(c *fiber.Ctx) error {
 	})
 }
 
+// TODO: sorting, pagination, searching
 func (h *BookHandler) HandleGetAllBooks(c *fiber.Ctx) error {
 	books, err := h.db.GetAllBooks()
 	if err != nil {
