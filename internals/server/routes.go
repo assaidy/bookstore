@@ -28,6 +28,17 @@ func (s *FiberServer) RegisterRoutes() {
 	s.Get("/cover/:id<int>", coverH.HandleGetCoverById)
 	// s.Delete("/cover/:id<int>", coverH.HandleDeleteCoverById) // FIX: delete this routes
 
+	//
+	// sorting:
+	// - popularity (i.e. purchase count)
+	// - latest
+	// - price_asc
+    // - price_desc
+	//
+	// pagination:
+	// - total number of pages
+	// - current page data
+	//
 	s.Get("/book", bookH.HandleGetAllBooks)
 	s.Get("/book/:id<int>", bookH.HnadleGetBookById)
 

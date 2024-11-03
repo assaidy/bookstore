@@ -44,16 +44,64 @@ func (h *BookHandler) HandleCreateBook(c *fiber.Ctx) error {
 	})
 }
 
-// TODO: sorting, pagination, searching
+func getSortingTechnique(c *fiber.Ctx) (string, error) {
+	st := c.Query("sorting")
+	if st == "" {
+		return "", fmt.Errorf("plz set value for param 'sorting'")
+	}
+
+	if st == "popularity" || st == "latest" || st == "price_asc" || st == "price_desc" {
+		return st, nil
+	}
+
+	return "", fmt.Errorf("'sorting' param takes only values {popularity, latest, price_asc, price_desc}")
+}
+
+func getPaginationData(c *fiber.Ctx) (page, limit int) {
+	defaultPage := 1
+	defaultLimit := 8
+	page = c.QueryInt("page", defaultPage)
+	limit = c.QueryInt("limit", defaultLimit)
+
+	if page < 1 {
+		page = defaultPage
+	}
+
+	if limit < 1 {
+		limit = defaultLimit
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	return page, limit
+}
+
 func (h *BookHandler) HandleGetAllBooks(c *fiber.Ctx) error {
-	books, err := h.db.GetAllBooks()
+	sorting, err := getSortingTechnique(c)
+	if err != nil {
+		return utils.BadRequestError(err.Error())
+	}
+	page, limit := getPaginationData(c)
+
+	books, err := h.db.GetAllBooks(sorting, page, limit)
 	if err != nil {
 		return utils.InternalServerError(err)
 	}
 
+	totalBooks, err := h.db.GetTotalBooks()
+	if err != nil {
+		return utils.InternalServerError(err)
+	}
+	totalPages := (totalBooks + limit - 1) / limit
+
 	return c.Status(fiber.StatusOK).JSON(utils.ApiResponse{
 		Message: "retrieved successfully",
-		Data:    fiber.Map{"books": books},
+		Data: fiber.Map{
+			"books":      books,
+			"page":       page,
+			"limit":      limit,
+			"totalPages": totalPages,
+		},
 	})
 }
 

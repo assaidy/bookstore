@@ -466,7 +466,7 @@ func (dbs *DBService) DeleteBook(id int) error {
 	return nil
 }
 
-func (dbs *DBService) GetAllBooks() ([]*models.Book, error) {
+func (dbs *DBService) GetAllBooks(sorting string, page, limit int) ([]*models.Book, error) {
 	query := `
     SELECT
         id,
@@ -479,9 +479,27 @@ func (dbs *DBService) GetAllBooks() ([]*models.Book, error) {
         discount,
         added_at,
         purchase_count
-    FROM books;
+    FROM books
     `
-	rows, err := dbs.db.Query(query)
+	var orderByClause string
+	switch sorting {
+	case "popularity":
+		orderByClause = "ORDER BY purchase_count DESC"
+	case "latest":
+		orderByClause = "ORDER BY added_at DESC"
+	case "price_desc":
+		orderByClause = "ORDER BY price DESC"
+	case "price_asc":
+		orderByClause = "ORDER BY price ASC"
+	default:
+		orderByClause = "ORDER BY added_at DESC"
+	}
+
+	query += orderByClause + " OFFSET $1 LIMIT $2"
+
+	offset := (page - 1) * limit
+
+	rows, err := dbs.db.Query(query, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -512,6 +530,15 @@ func (dbs *DBService) GetAllBooks() ([]*models.Book, error) {
 	}
 
 	return books, nil
+}
+
+func (dbs *DBService) GetTotalBooks() (int, error) {
+	query := `SELECT COUNT(*) FROM books;`
+	var count int
+	if err := dbs.db.QueryRow(query).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // --------------------------------------------------
